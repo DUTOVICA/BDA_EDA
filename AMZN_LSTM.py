@@ -16,7 +16,7 @@ df['Date'] = pd.to_datetime(df['Date'])
 df.set_index('Date', inplace=True)
 
 # Preprocessing
-df = df[['Close*']]  # We will only use the 'Close***' price as the feature
+df = df[['Close']]  # We will only use the 'Close***' price as the feature
 
 # Scaling the data
 scaler = MinMaxScaler(feature_range=(0, 1))
@@ -58,11 +58,11 @@ class LSTMModel(nn.Module):
     
     def forward(self, x):
         # Pass through LSTM layer
-        lstm_out, _ = self.lstm(x)
+        _, (h_n, _) = self.lstm(x)
         # Use the output from the last time step
-        predictions = self.fc(lstm_out[:, -1, :])
-        return predictions
-
+        x = self.fc(h_n[-1])
+        return x
+    
 # Initialize the model
 model = LSTMModel(input_size=1, hidden_layer_size=64, output_size=target_size)
 
@@ -91,17 +91,10 @@ model.eval()
 with torch.no_grad():
     y_pred = model(X_test)
 
-# Evaluate the performance using Accuracy and Matthews Correlation Coefficient
-y_pred = y_pred.numpy()
-y_test = y_test.numpy()
+from sklearn.metrics import mean_squared_error
 
-# For MCC, we need binary classification, but we can treat it as a regression task and check for Close**ness
-y_pred_binary = (y_pred > 0.5).astype(int)
-y_test_binary = (y_test > 0.5).astype(int)
-
-# Compute MCC
-mcc = matthews_corrcoef(y_test_binary.flatten(), y_pred_binary.flatten())
-print(f"Matthews Correlation Coefficient (MCC): {mcc:.4f}")
+mse = mean_squared_error(y_test.flatten(), y_pred.flatten())
+print(f"Mean Squared Error (MSE): {mse:.4f}")
 
 # Function to optimize hyperparameters using Bayesian Optimization
 def optimize_hyperparameters():
